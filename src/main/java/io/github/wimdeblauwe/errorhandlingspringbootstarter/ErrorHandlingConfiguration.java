@@ -1,15 +1,22 @@
 package io.github.wimdeblauwe.errorhandlingspringbootstarter;
 
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.*;
+import java.util.List;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
-import java.util.List;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.ConstraintViolationApiExceptionHandler;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.HttpMessageNotReadableApiExceptionHandler;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.MethodArgumentNotValidApiExceptionHandler;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.ObjectOptimisticLockingFailureApiExceptionHandler;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.SpringSecurityApiExceptionHandler;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.handler.TypeMismatchApiExceptionHandler;
 
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -48,8 +55,8 @@ public class ErrorHandlingConfiguration {
     }
 
     @Bean
-    public MethodArgumentNotValidApiExceptionHandler methodArgumentNotValidApiExceptionHandler(ErrorHandlingProperties properties) {
-        return new MethodArgumentNotValidApiExceptionHandler(properties);
+    public MethodArgumentNotValidApiExceptionHandler methodArgumentNotValidApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new MethodArgumentNotValidApiExceptionHandler(properties, messageSource);
     }
 
     @Bean
