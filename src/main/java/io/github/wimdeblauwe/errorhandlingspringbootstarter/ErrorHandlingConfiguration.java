@@ -40,8 +40,8 @@ public class ErrorHandlingConfiguration {
     }
 
     @Bean
-    public TypeMismatchApiExceptionHandler typeMismatchApiExceptionHandler(ErrorHandlingProperties properties) {
-        return new TypeMismatchApiExceptionHandler(properties);
+    public TypeMismatchApiExceptionHandler typeMismatchApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new TypeMismatchApiExceptionHandler(properties, messageSource);
     }
 
     @Bean
