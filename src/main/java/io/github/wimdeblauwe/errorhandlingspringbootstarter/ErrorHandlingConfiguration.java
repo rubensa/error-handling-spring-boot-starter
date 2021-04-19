@@ -50,8 +50,8 @@ public class ErrorHandlingConfiguration {
     }
 
     @Bean
-    public HttpMessageNotReadableApiExceptionHandler httpMessageNotReadableApiExceptionHandler(ErrorHandlingProperties properties) {
-        return new HttpMessageNotReadableApiExceptionHandler(properties);
+    public HttpMessageNotReadableApiExceptionHandler httpMessageNotReadableApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new HttpMessageNotReadableApiExceptionHandler(properties, messageSource);
     }
 
     @Bean
