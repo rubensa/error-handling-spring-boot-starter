@@ -45,8 +45,8 @@ public class ErrorHandlingConfiguration {
     }
 
     @Bean
-    public ConstraintViolationApiExceptionHandler constraintViolationApiExceptionHandler(ErrorHandlingProperties properties) {
-        return new ConstraintViolationApiExceptionHandler(properties);
+    public ConstraintViolationApiExceptionHandler constraintViolationApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new ConstraintViolationApiExceptionHandler(properties, messageSource);
     }
 
     @Bean

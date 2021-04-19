@@ -1,18 +1,27 @@
 package io.github.wimdeblauwe.errorhandlingspringbootstarter.handler;
 
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiErrorResponse;
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiFieldError;
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiGlobalError;
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.ErrorHandlingProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.validation.ElementKind;
 import javax.validation.Path;
-import java.util.Set;
+import javax.validation.metadata.ConstraintDescriptor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.http.HttpStatus;
+
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiErrorResponse;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiFieldError;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiGlobalError;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ErrorHandlingProperties;
 
 /**
  * {@link io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiExceptionHandler} for
@@ -23,9 +32,21 @@ import java.util.Set;
  */
 public class ConstraintViolationApiExceptionHandler extends AbstractApiExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConstraintViolationApiExceptionHandler.class);
+    /** The Constant internalAnnotationAttributes. */
+    private static final Set<String> internalAnnotationAttributes = new HashSet<>(
+            3);
 
-    public ConstraintViolationApiExceptionHandler(ErrorHandlingProperties properties) {
+    static {
+        internalAnnotationAttributes.add("message");
+        internalAnnotationAttributes.add("groups");
+        internalAnnotationAttributes.add("payload");
+    }
+
+    private MessageSource messageSource;
+
+    public ConstraintViolationApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
         super(properties);
+        this.messageSource = messageSource;
     }
 
     @Override
@@ -96,10 +117,66 @@ public class ConstraintViolationApiExceptionHandler extends AbstractApiException
         if (hasConfiguredOverrideForMessage(code)) {
             return getOverrideMessage(code);
         }
-        return constraintViolation.getMessage();
+        return getConstraintViolationMessage(constraintViolation);
     }
 
     private String getMessage(ConstraintViolationException exception) {
-        return "Validation failed. Error count: " + exception.getConstraintViolations().size();
+        String errorCode = ConstraintViolationException.class.getSimpleName();
+        return messageSource.getMessage(
+            new DefaultMessageSourceResolvable(
+                new String[] {errorCode},
+                new Object[] { exception.getConstraintViolations().size() },
+                "Validation failed. Error count: " + exception.getConstraintViolations().size()
+            ),
+            LocaleContextHolder.getLocale()
+        );
+    }
+
+    private String getConstraintViolationMessage(ConstraintViolation<?> constraintViolation) {
+        ConstraintDescriptor<?> cd = constraintViolation
+                .getConstraintDescriptor();
+        String errorCode = cd.getAnnotation().annotationType()
+                .getSimpleName();
+        Object[] errorArgs = getArgumentsForConstraint(cd);
+        return messageSource.getMessage(
+            new DefaultMessageSourceResolvable(
+                new String[] {errorCode},
+                errorArgs,
+                escapeSingleQuotes(constraintViolation.getMessage())
+            ),
+            LocaleContextHolder.getLocale()
+        );
+    }
+
+    /**
+     * Returns all actual constraint annotation
+     * attributes (i.e. excluding "message", "groups" and "payload") in
+     * alphabetical order of their attribute names.
+     */
+    private Object[] getArgumentsForConstraint(ConstraintDescriptor<?> descriptor) {
+        // Using a TreeMap for alphabetical ordering of attribute names
+        Map<String, Object> attributesToExpose = new TreeMap<>();
+        for (Map.Entry<String, Object> entry : descriptor.getAttributes()
+                .entrySet()) {
+            String attributeName = entry.getKey();
+            Object attributeValue = entry.getValue();
+            if (!internalAnnotationAttributes.contains(attributeName)) {
+                attributesToExpose.put(attributeName, attributeValue);
+            }
+        }
+        return attributesToExpose.values().toArray();
+    }
+
+
+    /**
+     * When the message has parameters, a MessageFormat is applied.
+     * Whenever you are using MessageFormat you should be aware that 
+     * the single quote character (') fulfils a special purpose inside 
+     * message patterns. The single quote is used to represent a section 
+     * within the message pattern that will not be formatted. A single 
+     * quote itself must be escaped by using two single quotes ('').
+     */
+    private String escapeSingleQuotes(String message) {
+        return message.replace("'", "''");
     }
 }
