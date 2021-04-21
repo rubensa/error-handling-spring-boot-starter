@@ -16,7 +16,11 @@ public abstract class AbstractApiExceptionHandler implements ApiExceptionHandler
     private MessageCodesResolver messageCodesResolver = new DefaultMessageCodesResolver();
     private MessageSource messageSource;
 
-    public AbstractApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+    public AbstractApiExceptionHandler(ErrorHandlingProperties properties) {
+        this(properties, null);
+    }
+
+    public AbstractApiExceptionHandler(ErrorHandlingProperties properties, @Nullable MessageSource messageSource) {
         this.properties = properties;
         this.messageSource = messageSource;
     }
@@ -62,6 +66,9 @@ public abstract class AbstractApiExceptionHandler implements ApiExceptionHandler
     }
 
     String getMessage(@Nullable String[] codes, @Nullable Object[] arguments, @Nullable String defaultMessage) {
+        if (messageSource == null) {
+            return defaultMessage;
+        }
         return messageSource.getMessage(
             new DefaultMessageSourceResolvable(
                 codes,
@@ -73,6 +80,9 @@ public abstract class AbstractApiExceptionHandler implements ApiExceptionHandler
     }
 
     String getMessage(MessageSourceResolvable resolvable) {
+        if (messageSource == null) {
+            return resolvable.getDefaultMessage();
+        }
         return messageSource.getMessage(resolvable, LocaleContextHolder.getLocale());
     }
 
