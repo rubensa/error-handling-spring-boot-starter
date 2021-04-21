@@ -1,18 +1,32 @@
 package io.github.wimdeblauwe.errorhandlingspringbootstarter.handler;
 
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiErrorResponse;
-import io.github.wimdeblauwe.errorhandlingspringbootstarter.ErrorHandlingProperties;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.*;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.springframework.http.HttpStatus.*;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AccountExpiredException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiErrorResponse;
+import io.github.wimdeblauwe.errorhandlingspringbootstarter.ErrorHandlingProperties;
 
 public class SpringSecurityApiExceptionHandler extends AbstractApiExceptionHandler {
+    private MessageSource messageSource;
 
     private static final Map<Class<? extends Exception>, HttpStatus> EXCEPTION_TO_STATUS_MAPPING;
 
@@ -29,8 +43,9 @@ public class SpringSecurityApiExceptionHandler extends AbstractApiExceptionHandl
         EXCEPTION_TO_STATUS_MAPPING.put(DisabledException.class, BAD_REQUEST);
     }
 
-    public SpringSecurityApiExceptionHandler(ErrorHandlingProperties properties) {
+    public SpringSecurityApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
         super(properties);
+        this.messageSource = messageSource;
     }
 
     @Override
@@ -43,6 +58,17 @@ public class SpringSecurityApiExceptionHandler extends AbstractApiExceptionHandl
         HttpStatus httpStatus = EXCEPTION_TO_STATUS_MAPPING.getOrDefault(exception.getClass(), INTERNAL_SERVER_ERROR);
         return new ApiErrorResponse(httpStatus,
                                     getErrorCode(exception),
-                                    exception.getMessage());
+                                    getMessage(exception));
+    }
+
+    private String getMessage(Throwable exception) {
+        String errorCode = exception.getClass().getSimpleName();
+        return messageSource.getMessage(
+            new DefaultMessageSourceResolvable(
+                new String[] { errorCode },
+                exception.getMessage()
+            ),
+            LocaleContextHolder.getLocale()
+        );
     }
 }

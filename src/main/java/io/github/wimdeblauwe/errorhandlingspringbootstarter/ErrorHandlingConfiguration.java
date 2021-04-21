@@ -61,8 +61,8 @@ public class ErrorHandlingConfiguration {
 
     @Bean
     @ConditionalOnClass(name = "org.springframework.security.access.AccessDeniedException")
-    public SpringSecurityApiExceptionHandler springSecurityApiExceptionHandler(ErrorHandlingProperties properties) {
-        return new SpringSecurityApiExceptionHandler(properties);
+    public SpringSecurityApiExceptionHandler springSecurityApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new SpringSecurityApiExceptionHandler(properties, messageSource);
     }
 
     @Bean
