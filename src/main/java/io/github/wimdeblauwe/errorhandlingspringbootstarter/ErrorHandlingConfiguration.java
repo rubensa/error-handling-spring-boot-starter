@@ -67,8 +67,8 @@ public class ErrorHandlingConfiguration {
 
     @Bean
     @ConditionalOnClass(name = "org.springframework.orm.ObjectOptimisticLockingFailureException")
-    public ObjectOptimisticLockingFailureApiExceptionHandler objectOptimisticLockingFailureApiExceptionHandler(ErrorHandlingProperties properties) {
-        return new ObjectOptimisticLockingFailureApiExceptionHandler(properties);
+    public ObjectOptimisticLockingFailureApiExceptionHandler objectOptimisticLockingFailureApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new ObjectOptimisticLockingFailureApiExceptionHandler(properties, messageSource);
     }
 
     @Bean
