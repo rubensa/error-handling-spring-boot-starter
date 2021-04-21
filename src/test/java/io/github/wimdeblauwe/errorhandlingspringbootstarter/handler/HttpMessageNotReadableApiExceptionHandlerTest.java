@@ -41,7 +41,7 @@ class HttpMessageNotReadableApiExceptionHandlerTest {
                                 .with(csrf()))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("code").value("MESSAGE_NOT_READABLE"))
-               .andExpect(jsonPath("message", Matchers.startsWith("JSON parse error: Unexpected character ('i' (code 105))")))
+               .andExpect(jsonPath("message", Matchers.startsWith("Unexpected character ('i' (code 105))")))
         ;
     }
 
