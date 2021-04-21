@@ -1,13 +1,11 @@
 package io.github.wimdeblauwe.errorhandlingspringbootstarter.handler;
 
 import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.DefaultMessageCodesResolver;
 import org.springframework.validation.FieldError;
-import org.springframework.validation.MessageCodesResolver;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
@@ -22,12 +20,8 @@ import io.github.wimdeblauwe.errorhandlingspringbootstarter.ErrorHandlingPropert
  * method arguments.
  */
 public class MethodArgumentNotValidApiExceptionHandler extends AbstractApiExceptionHandler {
-    private MessageCodesResolver messageCodesResolver = new DefaultMessageCodesResolver();
-    private MessageSource messageSource;
-
     public MethodArgumentNotValidApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
-        super(properties);
-        this.messageSource = messageSource;
+        super(properties, messageSource);
     }
 
     @Override
@@ -78,46 +72,30 @@ public class MethodArgumentNotValidApiExceptionHandler extends AbstractApiExcept
         if (hasConfiguredOverrideForMessage(fieldError.getCode())) {
             return getOverrideMessage(fieldError.getCode());
         }
-        return messageSource.getMessage(fieldError, LocaleContextHolder.getLocale());
+        return getMessage((MessageSourceResolvable)fieldError);
     }
 
     private String getMessage(ObjectError objectError) {
         if (hasConfiguredOverrideForMessage(objectError.getCode())) {
             return getOverrideMessage(objectError.getCode());
         }
-        return messageSource.getMessage(objectError, LocaleContextHolder.getLocale());
+        return getMessage((MessageSourceResolvable)objectError);
     }
 
     private String getMessage(MethodArgumentNotValidException exception) {
         String errorCode = MethodArgumentNotValidException.class.getSimpleName();
         String objectName = exception.getBindingResult().getObjectName();
-        return messageSource.getMessage(
-            new DefaultMessageSourceResolvable(
-                messageCodesResolver.resolveMessageCodes(errorCode, objectName),
-                new Object[] { 
-                    // This allows to "resolve" the object name
-                    new DefaultMessageSourceResolvable(
-                        new String[] { exception.getBindingResult().getObjectName() },
-                        exception.getBindingResult().getObjectName()
-                    ),
-                    exception.getBindingResult().getErrorCount()
-                },
-                escapeSingleQuotes("Validation failed for object='" + exception.getBindingResult().getObjectName() + "'. Error count: " + exception.getBindingResult().getErrorCount())
-            ),
-            LocaleContextHolder.getLocale()
+        return getMessage(
+            resolveMessageCodes(errorCode, objectName),
+            new Object[] { 
+                // This allows to "resolve" the object name
+                new DefaultMessageSourceResolvable(
+                    new String[] { exception.getBindingResult().getObjectName() },
+                    exception.getBindingResult().getObjectName()
+                ),
+                exception.getBindingResult().getErrorCount()
+            },
+            "Validation failed for object='" + exception.getBindingResult().getObjectName() + "'. Error count: " + exception.getBindingResult().getErrorCount()
         );
-    }
-
-
-    /**
-     * When the message has parameters, a MessageFormat is applied.
-     * Whenever you are using MessageFormat you should be aware that 
-     * the single quote character (') fulfils a special purpose inside 
-     * message patterns. The single quote is used to represent a section 
-     * within the message pattern that will not be formatted. A single 
-     * quote itself must be escaped by using two single quotes ('').
-     */
-    private String escapeSingleQuotes(String message) {
-        return message.replace("'", "''");
     }
 }

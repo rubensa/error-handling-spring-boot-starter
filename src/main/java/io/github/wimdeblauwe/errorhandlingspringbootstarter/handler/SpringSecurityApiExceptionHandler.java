@@ -9,8 +9,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AccountExpiredException;
@@ -26,8 +24,6 @@ import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiErrorResponse;
 import io.github.wimdeblauwe.errorhandlingspringbootstarter.ErrorHandlingProperties;
 
 public class SpringSecurityApiExceptionHandler extends AbstractApiExceptionHandler {
-    private MessageSource messageSource;
-
     private static final Map<Class<? extends Exception>, HttpStatus> EXCEPTION_TO_STATUS_MAPPING;
 
     static {
@@ -44,8 +40,7 @@ public class SpringSecurityApiExceptionHandler extends AbstractApiExceptionHandl
     }
 
     public SpringSecurityApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
-        super(properties);
-        this.messageSource = messageSource;
+        super(properties, messageSource);
     }
 
     @Override
@@ -58,17 +53,6 @@ public class SpringSecurityApiExceptionHandler extends AbstractApiExceptionHandl
         HttpStatus httpStatus = EXCEPTION_TO_STATUS_MAPPING.getOrDefault(exception.getClass(), INTERNAL_SERVER_ERROR);
         return new ApiErrorResponse(httpStatus,
                                     getErrorCode(exception),
-                                    getMessage(exception));
-    }
-
-    private String getMessage(Throwable exception) {
-        String errorCode = exception.getClass().getSimpleName();
-        return messageSource.getMessage(
-            new DefaultMessageSourceResolvable(
-                new String[] { errorCode },
-                exception.getMessage()
-            ),
-            LocaleContextHolder.getLocale()
-        );
+                                    getMessage(exception, exception.getClass()));
     }
 }

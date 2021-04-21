@@ -14,8 +14,6 @@ import javax.validation.metadata.ConstraintDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 
 import io.github.wimdeblauwe.errorhandlingspringbootstarter.ApiErrorResponse;
@@ -42,11 +40,8 @@ public class ConstraintViolationApiExceptionHandler extends AbstractApiException
         internalAnnotationAttributes.add("payload");
     }
 
-    private MessageSource messageSource;
-
     public ConstraintViolationApiExceptionHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
-        super(properties);
-        this.messageSource = messageSource;
+        super(properties, messageSource);
     }
 
     @Override
@@ -122,13 +117,10 @@ public class ConstraintViolationApiExceptionHandler extends AbstractApiException
 
     private String getMessage(ConstraintViolationException exception) {
         String errorCode = ConstraintViolationException.class.getSimpleName();
-        return messageSource.getMessage(
-            new DefaultMessageSourceResolvable(
-                new String[] {errorCode},
-                new Object[] { exception.getConstraintViolations().size() },
-                "Validation failed. Error count: " + exception.getConstraintViolations().size()
-            ),
-            LocaleContextHolder.getLocale()
+        return getMessage(
+            errorCode,
+            new Object[] { exception.getConstraintViolations().size() },
+            "Validation failed. Error count: " + exception.getConstraintViolations().size()
         );
     }
 
@@ -138,13 +130,10 @@ public class ConstraintViolationApiExceptionHandler extends AbstractApiException
         String errorCode = cd.getAnnotation().annotationType()
                 .getSimpleName();
         Object[] errorArgs = getArgumentsForConstraint(cd);
-        return messageSource.getMessage(
-            new DefaultMessageSourceResolvable(
-                new String[] {errorCode},
+        return getMessage(
+                errorCode,
                 errorArgs,
-                escapeSingleQuotes(constraintViolation.getMessage())
-            ),
-            LocaleContextHolder.getLocale()
+                constraintViolation.getMessage()
         );
     }
 
@@ -167,16 +156,4 @@ public class ConstraintViolationApiExceptionHandler extends AbstractApiException
         return attributesToExpose.values().toArray();
     }
 
-
-    /**
-     * When the message has parameters, a MessageFormat is applied.
-     * Whenever you are using MessageFormat you should be aware that 
-     * the single quote character (') fulfils a special purpose inside 
-     * message patterns. The single quote is used to represent a section 
-     * within the message pattern that will not be formatted. A single 
-     * quote itself must be escaped by using two single quotes ('').
-     */
-    private String escapeSingleQuotes(String message) {
-        return message.replace("'", "''");
-    }
 }
