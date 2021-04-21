@@ -35,8 +35,8 @@ public class ErrorHandlingConfiguration {
     }
 
     @Bean
-    public FallbackApiExceptionHandler defaultHandler(ErrorHandlingProperties properties) {
-        return new DefaultFallbackApiExceptionHandler(properties);
+    public FallbackApiExceptionHandler defaultHandler(ErrorHandlingProperties properties, MessageSource messageSource) {
+        return new DefaultFallbackApiExceptionHandler(properties, messageSource);
     }
 
     @Bean

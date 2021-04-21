@@ -1,13 +1,5 @@
 package io.github.wimdeblauwe.errorhandlingspringbootstarter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.server.ResponseStatusException;
-
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -15,18 +7,39 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.lang.Nullable;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 
 public class DefaultFallbackApiExceptionHandler implements FallbackApiExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultFallbackApiExceptionHandler.class);
 
     private final ErrorHandlingProperties properties;
+    private MessageSource messageSource;
 
     public DefaultFallbackApiExceptionHandler(ErrorHandlingProperties properties) {
+        this(properties, null);
+    }
+
+    public DefaultFallbackApiExceptionHandler(ErrorHandlingProperties properties, @Nullable MessageSource messageSource) {
         this.properties = properties;
+        this.messageSource = messageSource;
     }
 
     @Override
@@ -34,15 +47,14 @@ public class DefaultFallbackApiExceptionHandler implements FallbackApiExceptionH
         HttpStatus statusCode = getHttpStatus(exception);
         String errorCode = getErrorCode(exception);
 
-        ApiErrorResponse response = new ApiErrorResponse(statusCode, errorCode, getErrorMessage(exception));
-        response.addErrorProperties(getMethodResponseErrorProperties(exception));
-        response.addErrorProperties(getFieldResponseErrorProperties(exception));
+        // Using a TreeMap for alphabetical ordering of property names
+        Map<String, Object> errorProperties = new TreeMap<>();
+        errorProperties.putAll(getMethodResponseErrorProperties(exception));
+        errorProperties.putAll(getFieldResponseErrorProperties(exception));
+        ApiErrorResponse response = new ApiErrorResponse(statusCode, errorCode, getMessage(exception, exception.getClass(), errorProperties));
+        response.addErrorProperties(errorProperties);
 
         return response;
-    }
-
-    private String getErrorMessage(Throwable exception) {
-        return exception.getMessage();
     }
 
     private Map<String, Object> getFieldResponseErrorProperties(Throwable exception) {
@@ -64,7 +76,8 @@ public class DefaultFallbackApiExceptionHandler implements FallbackApiExceptionH
     }
 
     private Map<String, Object> getMethodResponseErrorProperties(Throwable exception) {
-        Map<String, Object> result = new HashMap<>();
+        // Using a TreeMap for alphabetical ordering of property names
+        Map<String, Object> result = new TreeMap<>();
         Class<? extends Throwable> exceptionClass = exception.getClass();
         for (Method method : exceptionClass.getMethods()) {
             if (method.isAnnotationPresent(ResponseErrorProperty.class)
@@ -167,4 +180,55 @@ public class DefaultFallbackApiExceptionHandler implements FallbackApiExceptionH
         return properties.getCodes().getOrDefault(code, code);
     }
 
+    private String getMessage(String code, Object[] arguments, String defaultMessage) {
+        return getMessage(new String[] {code}, arguments, defaultMessage);
+    }
+
+    private String getMessage(@Nullable String[] codes, @Nullable Object[] arguments, @Nullable String defaultMessage) {
+        if (messageSource == null) {
+            return defaultMessage;
+        }
+        return messageSource.getMessage(
+            new DefaultMessageSourceResolvable(
+                codes,
+                arguments,
+                (arguments == null)?defaultMessage:escapeSingleQuotes(defaultMessage)
+            ),
+            LocaleContextHolder.getLocale()
+        );
+    }
+
+    private String getMessage(Throwable exception, Class<?> exceptionClass, Map<String, Object> propertyMap) {
+        List<Object> arguments = new ArrayList<>();
+        for(Map.Entry<String,Object> property : propertyMap.entrySet()) {
+            String propertyName = property.getKey();
+            Object propertyValue = property.getValue();
+            // This allows to "resolve" the propertyName
+            arguments.add(
+                new DefaultMessageSourceResolvable(
+                    new String[] { propertyName },
+                    propertyName
+                )
+            );
+            arguments.add(propertyValue);
+        }
+        String errorCode = exceptionClass.getSimpleName();
+        return getMessage(
+            errorCode,
+            arguments.toArray(),
+            exception.getMessage()
+        );
+    }
+
+    /**
+     * When the message has parameters, a MessageFormat is applied.
+     * Whenever you are using MessageFormat you should be aware that 
+     * the single quote character (') fulfils a special purpose inside 
+     * message patterns. The single quote is used to represent a section 
+     * within the message pattern that will not be formatted. A single 
+     * quote itself must be escaped by using two single quotes ('').
+     */
+    private String escapeSingleQuotes(String message) {
+        return message.replace("'", "''");
+    }
 }
